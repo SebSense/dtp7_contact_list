@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.IO;
+using System.Linq.Expressions;
 
 namespace dtp7_contact_list
 {
@@ -10,8 +11,8 @@ namespace dtp7_contact_list
         class Person
         {
             public string persname, surname, birthdate;
-            public List<string> phone;
-            public List<string> address;
+            public List<string> phone = new();
+            public List<string> address = new();
             public Person() { }
             public Person(string persname, string surname)
             {
@@ -54,6 +55,7 @@ namespace dtp7_contact_list
                 // NYI: IMPORTANT
                 else if (commandLine[0] == "delete")
                 {
+                    //TODO: Add console feedback to user after finishing methods.
                     if (commandLine.Length == 1)
                     {
                         contactList = new List<Person>();
@@ -83,16 +85,22 @@ namespace dtp7_contact_list
                 }
                 else if (commandLine[0] == "load")
                 {
+                    //TODO: Print to console how many contacts were loaded after successful load.
                     if (commandLine.Length == 1)
-                    {
-                        lastFileName = GetUserDirectory("address.lis");
-                        LoadContactListFromFile(lastFileName);
+                    { try
+                        {
+                            lastFileName = GetUserDirectory("address.lis");
+                            LoadContactListFromFile(lastFileName);
+                        }
+                        catch (FileNotFoundException) { Console.WriteLine("Error. Could not find file '" + lastFileName + "'"); }
                     }
                     else if (commandLine.Length == 2)
                     {
-                        lastFileName = GetUserDirectory(commandLine[1]); // commandLine[1] is the first argument
-                        // FIXME: Throws System.IO.FileNotFoundException: 
-                        LoadContactListFromFile(lastFileName);
+                        try {
+                            lastFileName = GetUserDirectory(commandLine[1]); // commandLine[1] is the first argument
+                            LoadContactListFromFile(lastFileName);
+                        }
+                        catch (FileNotFoundException) { Console.WriteLine("Error. Could not find file '" + lastFileName + "'"); }
                     }
                     else
                     {
@@ -152,20 +160,17 @@ namespace dtp7_contact_list
 
         private static void DeleteAllPersons(string persname, string surname)
         {
-            int found;
-            do
+            bool found = false;
+            for(int i = 0; i < contactList.Count; i++)
             {
-                found = -1;
-                for(int i = 0; i < contactList.Count; i++)
+                if (contactList[i].persname == persname && contactList[i].surname ==surname)
                 {
-                    if (contactList[i].persname == persname && contactList[i].surname ==surname)
-                    {
-                        found = i; break; // breaks the for loop
-                    }
+                    contactList.RemoveAt(i);
+                    found = true;
+                    i--;
                 }
-                if (found == -1) break; // breaks the do loop
-                contactList.RemoveAt(found);
-            } while (true);
+            }
+            if (!found) Console.WriteLine("Error: Could not find any person '{0} {1}' in contact list.", persname, surname);
         }
 
         private static void ListContactList()
@@ -196,9 +201,28 @@ namespace dtp7_contact_list
                 if (phone == "") break;
                 newPerson.AddPhone(phone);
             } while (true);
-            Console.Write("birth date: ");
-            string birthdate = Console.ReadLine();
-            newPerson.birthdate = birthdate;
+            bool error;
+            do
+            {
+                error = false;
+                Console.Write("birth date (yyyy-mm-dd): ");
+                string birthdate = Console.ReadLine();
+                string[] dates = birthdate.Split('-');
+                try
+                {
+                    newPerson.birthdate = int.Parse(dates[0]) + "-" + int.Parse(dates[1]) + "-" + int.Parse(dates[2]);
+                }
+                catch (FormatException e)
+                {
+                    Console.WriteLine(e.Message);
+                    error = true;
+                }
+                catch (IndexOutOfRangeException e)
+                {
+                    Console.WriteLine(e.Message);
+                    error = true;
+                }
+            } while (error);
             contactList.Add(newPerson);
         }
 
@@ -224,10 +248,13 @@ namespace dtp7_contact_list
             using (StreamReader infile = new StreamReader(lastFileName))
             {
                 string line;
+                int i = 0;
                 while ((line = infile.ReadLine()) != null)
                 {
                     LoadContact(line); // Also prints the line loaded
+                    i++;
                 }
+                Console.WriteLine("Loaded {0} contacts from file '{1}'", i, lastFileName);
             }
         }
 
